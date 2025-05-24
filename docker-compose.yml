@@ -1,39 +1,37 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16.3-alpine
     container_name: postgres
     environment:
-      - POSTGRES_USER=sparkuser
-      - POSTGRES_PASSWORD=sparkpass
-      - POSTGRES_DB=postgres
+      POSTGRES_USER: sparkuser
+      POSTGRES_PASSWORD: sparkpass
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sparkuser"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   spark:
     build: ./spark
     container_name: spark
     ports:
-      - "4040:4040"
-      - "8888:8888"
+      - "4040:4040"         # Spark UI
+      - "8888:8888"         # JupyterLab
     volumes:
       - ./spark/notebooks:/workspace/notebooks
-    depends_on:
-      postgres:
-        condition: service_healthy
+    command: >
+      jupyter lab
+        --ip=0.0.0.0
+        --port=8888
+        --no-browser
+        --notebook-dir=/workspace/notebooks
+        --NotebookApp.token=''
+        --NotebookApp.password=''
     environment:
-      - SPARK_MASTER_URL=local[*]
-      - SPARK_DRIVER_MEMORY=2g
-      - SPARK_EXECUTOR_MEMORY=2g
+      PYSPARK_PYTHON: python3
+    depends_on:
+      - postgres
 
 volumes:
   pg_data:
