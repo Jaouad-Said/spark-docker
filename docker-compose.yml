@@ -1,37 +1,93 @@
+version: "3.8"
 services:
+  hadoop-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-namenode
+    environment:
+      - CLUSTER_NAME=bigdata
+    ports:
+      - "9870:9870"  # HDFS NameNode web UI
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+
+  hadoop-datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:8020
+      - SERVICE_PRECONDITION=hadoop-namenode:9870
+    ports:
+      - "9864:9864"  # HDFS DataNode web UI
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    depends_on:
+      - hadoop-namenode
+
+  hadoop-resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-resourcemanager
+    environment:
+      - YARN_RESOURCEMANAGER_HOSTNAME=hadoop-resourcemanager
+    ports:
+      - "8088:8088"  # YARN ResourceManager web UI
+    depends_on:
+      - hadoop-namenode
+
+  hadoop-nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager
+    depends_on:
+      - hadoop-resourcemanager
+
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    depends_on:
+      - hadoop-namenode
+      - hadoop-resourcemanager
+
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+
   postgres:
-    image: postgres:16.3-alpine
+    image: postgres:15
     container_name: postgres
     environment:
-      POSTGRES_USER: sparkuser
-      POSTGRES_PASSWORD: sparkpass
-      POSTGRES_DB: postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=demo
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
 
-  spark:
-    build: ./spark
-    container_name: spark
-    ports:
-      - "4040:4040"         # Spark UI
-      - "8888:8888"         # JupyterLab
-    volumes:
-      - ./spark/notebooks:/workspace/notebooks
-    command: >
-      jupyter lab
-        --ip=0.0.0.0
-        --port=8888
-        --no-browser
-        --notebook-dir=/workspace/notebooks
-        --NotebookApp.token=''
-        --NotebookApp.password=''
+  jupyter:
+    image: jupyter/pyspark-notebook
+    container_name: jupyter
     environment:
-      PYSPARK_PYTHON: python3
+      - JUPYTER_ENABLE_LAB=yes
+    ports:
+      - "8888:8888"
     depends_on:
-      - postgres
+      - spark-master
+      - hadoop-namenode
+
 
 volumes:
-  pg_data:
+  hadoop_namenode:
+  hadoop_datanode:
+  postgres_data:
