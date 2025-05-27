@@ -1,17 +1,3 @@
-Parfait ! Voici **le guide d’installation manuelle** de tout le stack (hors Docker), **sous Windows**, pour :
-
-* **Hadoop 3.2.1**
-* **Spark 3.5.5**
-* **PostgreSQL 15**
-* **Jupyter Notebook**
-* **Python 3 + pip**
-* **Java (OpenJDK)**
-* **PySpark**
-
-Ce guide vise une installation **locale**, tout sur la même machine, avec accès via navigateur.
-
----
-
 ## 🟣 1. Prérequis Système
 
 * Windows 10 ou 11 (64 bits recommandé)
